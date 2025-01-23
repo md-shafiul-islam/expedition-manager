@@ -3,6 +3,8 @@ const http = require("http");
 const socketIo = require("socket.io");
 const bodyParser = require("body-parser");
 const routers = require("./router");
+const dotEnv = require("dotenv");
+dotEnv.config();
 
 class Server {
   constructor() {
@@ -10,6 +12,10 @@ class Server {
     this.http = http.Server(this.app);
     this.io = socketIo(this.http);
     this.port = process.env.PORT || 3101;
+
+    this.initMiddleware();
+    this.initRoutes();
+    this.initSocket();
   }
 
   initMiddleware() {
@@ -31,10 +37,6 @@ class Server {
   }
 
   run() {
-    this.initMiddleware();
-    this.initRoutes();
-    this.initSocket();
-
     this.http.listen(this.port, () => {
       console.log(`Server running on port ${this.port}`);
     });
