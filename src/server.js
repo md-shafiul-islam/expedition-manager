@@ -3,8 +3,6 @@ const http = require("http");
 const socketIo = require("socket.io");
 const bodyParser = require("body-parser");
 const routers = require("./router");
-const dotEnv = require("dotenv");
-dotEnv.config();
 
 class Server {
   constructor() {

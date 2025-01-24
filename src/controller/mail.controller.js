@@ -1,6 +1,7 @@
 const authService = require("../services/auth.services");
 const mailService = require("../services/mail.services");
 const utilServices = require("../services/util.services");
+const userController = require("./user.controller");
 
 class MailController {
   sendMagicLink = async (req, res) => {
@@ -10,7 +11,11 @@ class MailController {
       null
     );
     try {
-      const token = authService.signMagicToken({ email: req.body.email });
+      const user = await userServices.getUserByEmail(req.body.email);
+      const token = authService.signMagicToken({
+        email: req.body.email,
+        id: user.id,
+      });
 
       mailResponse = await mailService.sendMail({
         email: req.body.email,

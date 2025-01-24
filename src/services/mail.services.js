@@ -1,7 +1,6 @@
 const nodemailer = require("nodemailer");
-const dotEnv = require("dotenv");
 const utilServices = require("./util.services");
-dotEnv.config();
+
 class MailService {
   constructor() {
     this.initTransporter();

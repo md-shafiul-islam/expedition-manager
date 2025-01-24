@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
-const dotEnv = require("dotenv");
-dotEnv.config();
+
 
 class AuthService {
   constructor() {}
