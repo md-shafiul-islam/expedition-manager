@@ -1,9 +1,21 @@
+const dbClient = require("../db/db.client");
+const Expedition = require("../model/Expedition");
+const User = require("../model/User");
+const utilServices = require("./util.services");
+
 class UserServices {
   getUserByEmail = async (email) => {
+    let user = null;
     try {
-      let user = null;
+      user = await User.findOne({ email }).select([
+        "-__v",
+        "-createdAt",
+        "-updatedAt",
+      ]);
     } catch (error) {
       console.log("GetUserByEmail Error ", error);
+    } finally {
+      return user;
     }
   };
 
@@ -11,12 +23,11 @@ class UserServices {
     const allResp = utilServices.responseFormat(false, "User not found");
     try {
       await dbClient.dbConnect();
-      const expeditions = await User.find({}).select(["-__v"]);
-      console.log("getAll, ", expeditions);
+      const users = await User.find({}).select(["-__v"]);
 
-      allResp.data = expeditions;
+      allResp.data = users;
       allResp.status = true;
-      allResp.message = `${expeditions?.length} expedition found`;
+      allResp.message = `${users?.length} User found`;
     } catch (error) {
       allResp.message = error.message;
     } finally {
@@ -24,46 +35,38 @@ class UserServices {
     }
   };
   getOne = async (id) => {
-    const expResp = utilServices.responseFormat(
-      false,
-      "User not found by ID"
-    );
+    const userResp = utilServices.responseFormat(false, "User not found by ID");
 
     try {
       if (!utilServices.isValidateId(id)) {
         throw new Error("User id is not valid");
       }
 
-      const expedition = await Expedition.findById(id);
-      if (!utilServices.isEmpty(expedition)) {
-        expResp.data = expedition;
-        expResp.status = true;
-        expResp.message = "User found successfully";
+      const user = await User.findById(id);
+      if (!utilServices.isEmpty(user)) {
+        userResp.data = user;
+        userResp.status = true;
+        userResp.message = "User found successfully";
       }
     } catch (error) {
-      expResp.message = error.message;
+      userResp.message = error.message;
     } finally {
-      return expResp;
+      return userResp;
     }
   };
 
-  add = async (expedition) => {
-    const addResp = utilServices.responseFormat(
-      false,
-      "User add failed",
-      null
-    );
+  add = async (user) => {
+    const addResp = utilServices.responseFormat(false, "User add failed", null);
     try {
-      if (utilServices.isEmpty(expedition)) {
+      if (utilServices.isEmpty(user)) {
         throw new Error("User is Empty !!");
       }
       await dbClient.dbConnect();
-      const nExpedition = new Expedition();
-      Object.assign(nExpedition, expedition);
-      const addExp = await nExpedition.save();
-      console.log("User Save ", addExp);
+      const nUser = new User();
+      Object.assign(nUser, user);
+      const addUser = await nUser.save();
 
-      if (addExp) {
+      if (!utilServices.isEmpty(addUser)) {
         addResp.status = true;
         addResp.message = "User added successfully";
       }
@@ -75,96 +78,41 @@ class UserServices {
     }
   };
 
-  addAll = async (expeditions = []) => {
+  addViaMail = async (email) => {
+    let user = null;
     try {
-      console.log("Users, ", expeditions);
-      await dbClient.dbConnect();
-
-      const nExps = [];
-
-      expeditions.forEach((item) => {
-        const nExp = new Expedition();
-        Object.assign(nExp, item);
-        nExps.push(nExp);
-      });
-      const result = await Expedition.insertMany(nExps, {
-        ordered: false,
-      });
-      console.log("All expeditions Save, ", result);
-      if (result) {
-        return utilServices.responseFormat(
-          true,
-          "All expedition are saved",
-          result
-        );
+      if (utilServices.isEmpty(email)) {
+        throw new Error("User Email is Empty !!");
       }
-      throw new Expedition("All expedition saved failed");
+      await dbClient.dbConnect();
+      const nUser = new User();
+      nUser.email = email;
+      nUser.name = email;
+      user = await nUser.save();
     } catch (error) {
-      console.log("User add all error ", error);
-      return utilServices.responseFormat(
-        false,
-        "All expedition saved failed",
-        null
-      );
+      console.log("Add User Via mail Error ", error);
+    } finally {
+      return user;
     }
   };
 
-  update = async (uExpedition) => {
-    const updateResp = utilServices.responseFormat(
-      false,
-      "User Update failed"
-    );
+  update = async (uUser) => {
+    const updateResp = utilServices.responseFormat(false, "User Update failed");
     try {
-      if (utilServices.isEmpty(uExpedition)) {
+      if (utilServices.isEmpty(uUser)) {
         throw new Error("User is empty");
       }
 
-      const { _id, ...expedition } = uExpedition;
+      const { _id, ...user } = uUser;
 
       if (!utilServices.isValidateId(_id)) {
         throw new Error("User id is not valid");
       }
 
-      const {
-        itinerary,
-        startDate,
-        endDate,
-        price,
-        availableSeats,
-        totalSeats,
-        difficulty,
-      } = expedition;
+      const updateUser = await User.updateOne({ _id }, { $set: user });
 
-      if (!["Easy", "Medium", "Hard"].includes(difficulty)) {
-        throw new Error(
-          "Difficulty must be one of 'Easy', 'Medium', or 'Hard'."
-        );
-      }
-      if (
-        utilServices.isEmpty(itinerary) ||
-        price < 0 ||
-        availableSeats < 0 ||
-        totalSeats < 0
-      ) {
-        throw new Error(
-          "User format is incorrect. Itinerary must not be empty, price, available seats, and total seats must be non-negative."
-        );
-      }
-
-      if (totalSeats < availableSeats) {
-        throw new Error("Available seats cannot exceed total seats.");
-      }
-
-      if (new Date(startDate) >= new Date(endDate)) {
-        throw new Error("Start date must be before end date.");
-      }
-      const updateExp = await Expedition.updateOne(
-        { _id },
-        { $set: expedition }
-      );
-
-      console.log("updateExp, ", updateExp);
-      if (updateExp) {
+      console.log("updateUser, ", updateUser);
+      if (updateUser) {
         updateResp.status = true;
         updateResp.message = "User update successfully";
       }
@@ -175,6 +123,7 @@ class UserServices {
       return updateResp;
     }
   };
+
   remove = async (id) => {
     const resp = utilServices.responseFormat(false, "Remove failed");
     try {
@@ -182,7 +131,7 @@ class UserServices {
         throw new Error("User id is not valid");
       }
 
-      const removeItem = await Expedition.findByIdAndDelete(id);
+      const removeItem = await User.findByIdAndDelete(id);
 
       if (!utilServices.isEmpty(removeItem)) {
         resp.message = `'${removeItem?.name}' remove successfully`;
@@ -197,5 +146,5 @@ class UserServices {
   };
 }
 
-const userServices = new userServices();
+const userServices = new UserServices();
 module.exports = userServices;

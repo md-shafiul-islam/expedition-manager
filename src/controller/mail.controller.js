@@ -1,5 +1,6 @@
 const authService = require("../services/auth.services");
 const mailService = require("../services/mail.services");
+const userServices = require("../services/user.services");
 const utilServices = require("../services/util.services");
 const userController = require("./user.controller");
 
@@ -11,10 +12,13 @@ class MailController {
       null
     );
     try {
-      const user = await userServices.getUserByEmail(req.body.email);
+      let user = await userServices.getUserByEmail(req.body.email);
+      if (utilServices.isEmpty(user)) {
+        user = await userServices.addViaMail(req.body.email);
+      }
       const token = authService.signMagicToken({
         email: req.body.email,
-        id: user.id,
+        id: user._id,
       });
 
       mailResponse = await mailService.sendMail({
