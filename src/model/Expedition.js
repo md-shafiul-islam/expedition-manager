@@ -2,21 +2,17 @@ const mongoose = require("mongoose");
 
 const expeditionSchema = new mongoose.Schema(
   {
-    id: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-    },
     name: {
       type: String,
       required: true,
+      unique: true,
       trim: true,
     },
     destination: {
       type: String,
       required: true,
       trim: true,
+      index: true,
     },
     description: {
       type: String,
@@ -29,6 +25,12 @@ const expeditionSchema = new mongoose.Schema(
     endDate: {
       type: Date,
       required: true,
+      validate: {
+        validator: function (value) {
+          return value > this.startDate;
+        },
+        message: "End date must be after start date.",
+      },
     },
     price: {
       type: Number,
@@ -39,6 +41,12 @@ const expeditionSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
+      validate: {
+        validator: function (value) {
+          return value <= this.totalSeats;
+        },
+        message: "Available seats cannot exceed total seats.",
+      },
     },
     totalSeats: {
       type: Number,
