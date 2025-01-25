@@ -52,16 +52,10 @@ const bookingSchema = new mongoose.Schema(
       type: Date,
       default: Date.now, // Automatically set booking date
     },
-    paymentInfo: {
-      payment: {
-        type: String,
-        required: true,
-      },
-      status: {
-        type: String,
-        enum: ["Success", "Failed", "Pending"], // Payment statuses
-        required: true,
-      },
+    paymetStatus: {
+      type: String,
+      enum: ["Success", "Failed", "Pending"], // Payment statuses
+      required: true,
     },
     deleted: {
       type: Boolean,
