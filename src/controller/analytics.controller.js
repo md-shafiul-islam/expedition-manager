@@ -1,26 +1,23 @@
 const analyticsServices = require("../services/analytics.services");
-const authService = require("../services/auth.services");
-const mailService = require("../services/mail.services");
-const userServices = require("../services/user.services");
 const utilServices = require("../services/util.services");
-const userController = require("./user.controller");
 
 class AnalyticsController {
-  getPopularDestinations = async () => {
+  getPopularDestinations = async (req, res) => {
     let resp = utilServices.responseFormat(
       false,
       "Not found any Popular Destinations"
     );
     try {
-      resp = analyticsServices.getPopularDestinations();
+      resp = await analyticsServices.getPopularDestinations();
     } catch (error) {
-      console.log("CN getPopularDestinations Error , ", error);
       resp.status = false;
-      return resp;
+      resp.message = error.message;
+    } finally {
+      res.status(200).send(resp);
     }
   };
 
-  getBookingsPerMonth = async () => {
+  getBookingsPerMonth = async (req, res) => {
     let resp = utilServices.responseFormat(
       false,
       "Bookings Not found by Month"
@@ -31,12 +28,13 @@ class AnalyticsController {
       console.log("CN getBookingsPerMonth Error , ", error);
 
       resp.status = false;
-      return resp;
+    } finally {
+      res.status(200).send(resp);
     }
   };
 
-  getPopularDestinationsPerMonth = async () => {
-    const resp = utilServices.responseFormat(
+  getPopularDestinationsPerMonth = async (req, res) => {
+    let resp = utilServices.responseFormat(
       false,
       "Not found any Popular Destinations By Month"
     );
@@ -46,7 +44,8 @@ class AnalyticsController {
     } catch (error) {
       console.log("CN Error: Popular Destinations By Month, ", error);
       resp.status = false;
-      return resp;
+    } finally {
+      res.status(200).send(resp);
     }
   };
 }

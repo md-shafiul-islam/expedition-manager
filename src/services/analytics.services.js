@@ -1,6 +1,5 @@
 const dbClient = require("../db/db.client");
 const Booking = require("../model/Booking");
-const Expedition = require("../model/Expedition");
 const utilServices = require("./util.services");
 const ValidationError = require("../error/ValidationError");
 const NotFoundError = require("../error/NotFoundError");
@@ -13,7 +12,7 @@ class AnalyticsServices {
     );
     try {
       const pipeline = [
-        { $match: { deleted: false }, status: { $in: ["Confirmed"] } },
+        { $match: { deleted: false, status: { $in: ["Confirmed"] } } },
         {
           $lookup: {
             from: "expeditions",
@@ -27,13 +26,22 @@ class AnalyticsServices {
           $group: {
             _id: "$expeditionDetails.destination",
             totalBooking: { $sum: 1 },
-            totalSeatsBooked: { $sum: $seats },
+            totalSeatsBooked: { $sum: "$seats" },
             revenueGenerated: {
               $sum: { $multiply: ["$seats", "$pricePerSeat"] },
             },
           },
         },
-        { $sort: { totalBookings: -1 } },
+        {
+          $project: {
+            _id: 0, // Exclude _id field
+            destination: "$_id",
+            totalBooking: 1,
+            totalSeatsBooked: 1,
+            revenueGenerated: 1,
+          },
+        },
+        { $sort: { totalBooking: -1 } },
       ];
       await dbClient.dbConnect();
       const result = await Booking.aggregate(pipeline);
@@ -56,29 +64,39 @@ class AnalyticsServices {
     );
     try {
       const pipeline = [
-        { $match: { deleted: false, $status: { $in: ["Confirmed"] } } },
+        { $match: { deleted: false, status: { $in: ["Confirmed"] } } },
         {
           $addFields: {
             yearMonth: {
-              $dateToString: { format: "%Y-$m", date: "$bookingDate" },
+              $dateToString: { format: "%Y-%m", date: "$bookingDate" },
             },
           },
         },
         {
           $group: {
             _id: "$yearMonth",
-            totalBookings: { $sum: 1 },
+            totalBooking: { $sum: 1 },
             totalSeatsBooked: { $sum: "$seats" },
             revenueGenerated: {
               $sum: { $multiply: ["$seats", "$pricePerSeat"] },
             },
           },
         },
-        { $sort: { _id: 1 } },
+
+        {
+          $project: {
+            _id: 0, // Exclude _id field
+            yearMonth: "$_id",
+            totalBooking: 1,
+            totalSeatsBooked: 1,
+            revenueGenerated: 1,
+          },
+        },
+
+        { $sort: { yearMonth: 1 } },
       ];
 
       await dbClient.dbConnect();
-
       const result = await Booking.aggregate(pipeline);
 
       if (!utilServices.isEmpty(result)) {
@@ -87,6 +105,7 @@ class AnalyticsServices {
         resp.status = true;
       }
     } catch (error) {
+      console.log("getBookingsPerMonth, Error, ", error);
     } finally {
       return resp;
     }
@@ -99,6 +118,8 @@ class AnalyticsServices {
     );
 
     try {
+      // await dbClient.dbConnect();
+
       const pipeline = [
         { $match: { deleted: false, status: { $in: ["Confirmed"] } } },
         {
@@ -128,14 +149,23 @@ class AnalyticsServices {
             },
             totalBooking: { $sum: 1 },
             totalSeatsBooked: { $sum: "$seats" },
-            revenueGenerated: { $multiply: ["$seats", "$pricePerSeat"] },
+            revenueGenerated: {
+              $sum: { $multiply: ["$seats", "$pricePerSeat"] },
+            },
           },
         },
-        { $sort: { "_id.yearMonth": 1, totalBookings: -1 } },
+        {
+          $project: {
+            _id: 0, // Exclude _id field
+            yearMonth: "$_id.yearMonth", // Flatten yearMonth
+            destination: "$_id.destination", // Flatten destination
+            totalBooking: 1,
+            totalSeatsBooked: 1,
+            revenueGenerated: 1,
+          },
+        },
+        { $sort: { yearMonth: 1, totalBooking: -1 } },
       ];
-
-      await dbClient.dbConnect();
-
       const result = await Booking.aggregate(pipeline);
       if (!utilServices.isEmpty(result)) {
         resp.data = result;
