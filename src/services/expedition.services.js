@@ -8,7 +8,6 @@ class ExpeditionServices {
     try {
       await dbClient.dbConnect();
       const expeditions = await Expedition.find({}).select(["-__v"]);
-      console.log("getAll, ", expeditions);
 
       allResp.data = expeditions;
       allResp.status = true;

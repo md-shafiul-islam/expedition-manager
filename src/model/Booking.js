@@ -55,7 +55,7 @@ const bookingSchema = new mongoose.Schema(
     paymetStatus: {
       type: String,
       enum: ["Success", "Failed", "Pending"], // Payment statuses
-      required: true,
+      default: "Pending",
     },
     deleted: {
       type: Boolean,
@@ -68,58 +68,26 @@ const bookingSchema = new mongoose.Schema(
 );
 
 //
-// Hooks (Middlewares) for Business Logic
-//
-
-// Post-save middleware: Adjust available seats after a confirmed booking
-bookingSchema.post("save", async function () {
-  const Expedition = mongoose.model("Expedition");
-
-  if (this.status === "Confirmed") {
-    const expedition = await Expedition.findById(this.expeditionId);
-    if (expedition) {
-      expedition.availableSeats -= this.seats; // Deduct booked seats
-      await expedition.save();
-    }
-  }
-});
-
-// Pre-save middleware: Restore seats on booking cancellation
-bookingSchema.pre("save", async function (next) {
-  if (this.isModified("status") && this.status === "Cancelled") {
-    const Expedition = mongoose.model("Expedition");
-    const expedition = await Expedition.findById(this.expeditionId);
-
-    if (expedition) {
-      expedition.availableSeats += this.seats; // Restore seats
-      await expedition.save();
-    }
-  }
-
-  next();
-});
-
-//
 // Static and Instance Methods
 //
 
 // Static method to create a new booking
-bookingSchema.statics.createBooking = async function (data) {
+bookingSchema.statics.createBooking = async function (bookingData) {
   const Expedition = mongoose.model("Expedition");
-  const expedition = await Expedition.findById(data.expeditionId);
+  const expedition = await Expedition.findById(bookingData.expedition);
 
   if (!expedition) {
     throw new Error("Expedition not found.");
   }
 
-  if (expedition.availableSeats < data.seats) {
+  if (expedition.availableSeats < bookingData.seats) {
     throw new Error("Not enough seats available.");
   }
 
   const booking = new this({
-    ...data,
+    ...bookingData,
     pricePerSeat: expedition.price,
-    totalPrice: data.seats * expedition.price,
+    totalPrice: bookingData.seats * expedition.price,
   });
 
   return booking.save();
@@ -127,16 +95,22 @@ bookingSchema.statics.createBooking = async function (data) {
 
 // Instance method to update booking status
 bookingSchema.methods.updateStatus = async function (newStatus) {
-  if (newStatus === "Cancelled" && this.status === "Confirmed") {
-    const Expedition = mongoose.model("Expedition");
-    const expedition = await Expedition.findById(this.expeditionId);
+  const Expedition = mongoose.model("Expedition");
+  const expedition = await Expedition.findById(this.expedition);
 
+  if (newStatus === "Cancelled" && this.status === "Confirmed") {
     if (expedition) {
       expedition.availableSeats += this.seats; // Restore seats
       await expedition.save();
     }
   }
 
+  if (newStatus === "Confirmed" && this.status !== "Confirmed") {
+    if (expedition) {
+      expedition.availableSeats -= this.seats; // Deduct booked seats
+      await expedition.save();
+    }
+  }
   this.status = newStatus;
   return this.save();
 };
